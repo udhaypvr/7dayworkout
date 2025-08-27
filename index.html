@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7-Day Home Workout Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .day-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .day-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .exercise-item input:checked + label .exercise-name {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+         .exercise-item input:checked + label .checkmark {
+            background-color: #34d399;
+            border-color: #34d399;
+        }
+        .exercise-item input:checked + label .checkmark:after {
+            display: block;
+        }
+        .checkmark {
+            position: relative;
+            height: 24px;
+            width: 24px;
+            background-color: #fff;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 7px;
+            top: 3px;
+            width: 6px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+        .timer-display {
+            font-size: 3rem;
+        }
+        .modal-backdrop {
+            background-color: rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="main-view" class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Your 7-Day Workout Plan</h1>
+            <p class="text-lg text-gray-600 mt-2">Select a day to view your workout and track your progress.</p>
+        </header>
+
+        <div id="day-selection" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Day cards will be inserted here by JavaScript -->
+        </div>
+    </div>
+
+    <div id="workout-view" class="hidden container mx-auto p-4 md:p-8 max-w-4xl">
+        <button id="back-button" class="mb-6 bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-300 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+            Back to Plan
+        </button>
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <h2 id="workout-day-title" class="text-3xl font-bold mb-2"></h2>
+            <p id="workout-day-goal" class="text-gray-600 mb-6"></p>
+            <div id="workout-content"></div>
+        </div>
+    </div>
+    
+    <!-- Timer Modal -->
+    <div id="timer-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-sm w-full mx-4">
+            <h3 id="timer-title" class="text-2xl font-bold mb-4"></h3>
+            <div id="timer-display" class="timer-display font-mono font-bold text-gray-900 my-6">00:00</div>
+            <div class="flex justify-center space-x-4">
+                <button id="timer-start-pause" class="bg-green-500 text-white font-bold py-3 px-8 rounded-full hover:bg-green-600 transition duration-300">Start</button>
+                <button id="timer-reset" class="bg-gray-300 text-gray-800 font-bold py-3 px-8 rounded-full hover:bg-gray-400 transition duration-300">Reset</button>
+            </div>
+             <button id="timer-close" class="mt-6 text-gray-500 hover:text-gray-700 font-semibold">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const workouts = {
+            'Day 1': {
+                title: 'Full Body Strength & Cardio',
+                goal: 'Build muscle to increase metabolism and burn calories.',
+                structure: 'Complete 4 rounds of the following circuit. Rest 90 seconds between rounds.',
+                exercises: [
+                    { name: 'Jumping Jacks', detail: '60 seconds' },
+                    { name: 'Squats', detail: '15 reps' },
+                    { name: 'Push-ups', detail: '10 reps (on knees if needed)' },
+                    { name: 'Alternating Lunges', detail: '12 reps per leg' },
+                    { name: 'Plank', detail: '45-second hold' },
+                    { name: 'Glute Bridges', detail: '20 reps' },
+                ]
+            },
+            'Day 2': {
+                title: 'HIIT & Core Focus',
+                goal: 'Spike your heart rate to burn maximum calories and strengthen your core.',
+                content: `
+                    <div class="mb-6">
+                        <h4 class="text-xl font-semibold mb-2 text-indigo-600">Part 1: HIIT (2 rounds total)</h4>
+                        <p class="text-gray-600 mb-3">Perform each exercise for 40 seconds, then rest for 20 seconds. After completing all 5, rest for 1 minute, then repeat.</p>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li>High Knees</li>
+                            <li>Burpees</li>
+                            <li>Mountain Climbers</li>
+                            <li>Squat Jumps</li>
+                            <li>Jumping Jacks</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-semibold mb-2 text-indigo-600">Part 2: Core Circuit (3 rounds total)</h4>
+                        <p class="text-gray-600 mb-3">Complete all exercises, then rest for 60 seconds before the next round.</p>
+                        ${[
+                            { name: 'Leg Raises', detail: '15 reps' },
+                            { name: 'Bicycle Crunches', detail: '45 seconds' },
+                            { name: 'Flutter Kicks', detail: '45 seconds' },
+                            { name: 'Plank', detail: '60-second hold' },
+                        ].map((ex, index) => createExerciseHTML(ex, 'day2_core_' + index)).join('')}
+                    </div>`
+            },
+            'Day 3': {
+                title: 'Lower Body Strength (Thighs & Glutes)',
+                goal: 'Directly target and tone the muscles in your thighs and glutes.',
+                structure: 'Complete 4 rounds of the following circuit. Rest 90 seconds between rounds.',
+                exercises: [
+                    { name: 'Bodyweight Squats', detail: '20 reps' },
+                    { name: 'Walking Lunges', detail: '12 reps per leg' },
+                    { name: 'Glute Bridges', detail: '20 reps' },
+                    { name: 'Side Lunges', detail: '10 reps per side' },
+                    { name: 'Donkey Kicks', detail: '15 reps per leg' },
+                    { name: 'Fire Hydrants', detail: '15 reps per leg' },
+                ]
+            },
+            'Day 4': {
+                title: 'Active Recovery',
+                goal: 'Allow muscles to repair while still burning calories and improving flexibility.',
+                content: `<p class="text-lg text-gray-700">Choose one of the following for 45-60 minutes:</p>
+                          <ul class="list-disc list-inside space-y-3 mt-4 text-gray-600">
+                            <li>Brisk Walking or Light Jogging</li>
+                            <li>Cycling</li>
+                            <li>Yoga or deep stretching</li>
+                          </ul>`
+            },
+            'Day 5': {
+                // Same as Day 1
+                ...this['Day 1'],
+                title: 'Full Body Strength & Cardio',
+            },
+            'Day 6': {
+                // Same as Day 2
+                ...this['Day 2'],
+                title: 'HIIT & Core Focus',
+            },
+            'Day 7': {
+                title: 'Rest Day',
+                goal: 'Full recovery. This is crucial for muscle growth and preventing injury.',
+                content: `<div class="text-center py-8">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                            <p class="text-xl font-semibold text-gray-700 mt-4">You've earned it! Rest is essential for results. Let your body recover and get ready for the next week.</p>
+                         </div>`
+            }
+        };
+
+        const daySelection = document.getElementById('day-selection');
+        const mainView = document.getElementById('main-view');
+        const workoutView = document.getElementById('workout-view');
+        const backButton = document.getElementById('back-button');
+        const workoutDayTitle = document.getElementById('workout-day-title');
+        const workoutDayGoal = document.getElementById('workout-day-goal');
+        const workoutContent = document.getElementById('workout-content');
+        
+        // Timer elements
+        const timerModal = document.getElementById('timer-modal');
+        const timerTitle = document.getElementById('timer-title');
+        const timerDisplay = document.getElementById('timer-display');
+        const timerStartPauseBtn = document.getElementById('timer-start-pause');
+        const timerResetBtn = document.getElementById('timer-reset');
+        const timerCloseBtn = document.getElementById('timer-close');
+
+        let timerInterval;
+        let totalSeconds = 0;
+        let remainingSeconds = 0;
+        let isTimerRunning = false;
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function startTimer(duration, title) {
+            clearInterval(timerInterval);
+            totalSeconds = duration;
+            remainingSeconds = duration;
+            timerDisplay.textContent = formatTime(remainingSeconds);
+            timerTitle.textContent = title;
+            isTimerRunning = false;
+            timerStartPauseBtn.textContent = 'Start';
+            timerModal.classList.remove('hidden');
+        }
+
+        timerStartPauseBtn.addEventListener('click', () => {
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                timerStartPauseBtn.textContent = 'Resume';
+            } else {
+                timerStartPauseBtn.textContent = 'Pause';
+                timerInterval = setInterval(() => {
+                    remainingSeconds--;
+                    timerDisplay.textContent = formatTime(remainingSeconds);
+                    if (remainingSeconds <= 0) {
+                        clearInterval(timerInterval);
+                        timerStartPauseBtn.textContent = 'Done';
+                        // Optional: Play a sound
+                        new Audio('https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3').play().catch(e => console.log("Audio play failed"));
+                    }
+                }, 1000);
+            }
+            isTimerRunning = !isTimerRunning;
+        });
+        
+        timerResetBtn.addEventListener('click', () => {
+             clearInterval(timerInterval);
+             remainingSeconds = totalSeconds;
+             timerDisplay.textContent = formatTime(remainingSeconds);
+             isTimerRunning = false;
+             timerStartPauseBtn.textContent = 'Start';
+        });
+
+        timerCloseBtn.addEventListener('click', () => {
+            clearInterval(timerInterval);
+            timerModal.classList.add('hidden');
+        });
+
+        function createExerciseHTML(exercise, id) {
+             const hasTimer = exercise.detail.includes('second');
+             const duration = hasTimer ? parseInt(exercise.detail) : 0;
+
+            return `
+                <div class="exercise-item border-b border-gray-200 py-4">
+                    <input type="checkbox" id="${id}" class="hidden" onchange="saveProgress('${id}')" ${loadProgress(id) ? 'checked' : ''}>
+                    <label for="${id}" class="flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center">
+                            <span class="checkmark mr-4"></span>
+                            <div>
+                                <span class="exercise-name font-semibold text-lg">${exercise.name}</span>
+                                <span class="text-gray-500 block">${exercise.detail}</span>
+                            </div>
+                        </div>
+                        ${hasTimer ? `<button onclick="event.preventDefault(); startTimer(${duration}, '${exercise.name}')" class="bg-gray-200 text-gray-700 text-sm font-semibold py-1 px-3 rounded-full hover:bg-gray-300">TIMER</button>` : ''}
+                    </label>
+                </div>`;
+        }
+        
+        function saveProgress(id) {
+            const checkbox = document.getElementById(id);
+            localStorage.setItem(`progress_${id}`, checkbox.checked);
+        }
+
+        function loadProgress(id) {
+            return localStorage.getItem(`progress_${id}`) === 'true';
+        }
+
+        function showWorkout(day) {
+            const workout = workouts[day];
+            workoutDayTitle.textContent = `${day}: ${workout.title}`;
+            workoutDayGoal.textContent = workout.goal;
+            
+            let contentHTML = '';
+            if (workout.exercises) {
+                contentHTML += `<p class="text-gray-600 mb-4">${workout.structure}</p>`;
+                contentHTML += workout.exercises.map((ex, index) => createExerciseHTML(ex, `${day.replace(' ','')}_${index}`)).join('');
+            } else {
+                contentHTML = workout.content;
+            }
+            workoutContent.innerHTML = contentHTML;
+
+            mainView.classList.add('hidden');
+            workoutView.classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function showMainView() {
+            workoutView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+        }
+
+        backButton.addEventListener('click', showMainView);
+
+        // Populate day selection cards
+        Object.keys(workouts).forEach(day => {
+            const dayCard = document.createElement('div');
+            dayCard.className = 'day-card bg-white p-6 rounded-2xl shadow-md cursor-pointer';
+            dayCard.innerHTML = `
+                <h3 class="text-xl font-bold text-gray-900">${day}</h3>
+                <p class="text-indigo-500 font-semibold mt-1">${workouts[day].title}</p>
+            `;
+            dayCard.addEventListener('click', () => showWorkout(day));
+            daySelection.appendChild(dayCard);
+        });
+        
+        // On initial load
+        showMainView();
+
+    </script>
+</body>
+</html>
